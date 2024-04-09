@@ -12,5 +12,6 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    println!("Complete.");
     Ok(())
 }
