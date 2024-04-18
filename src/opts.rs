@@ -17,6 +17,9 @@ pub enum SubCommand {
         about = "Show CSV, or convert CSV to other formats"
     )]
     Csv(CsvOpts),
+
+    #[command(name = "genpass", about = "Generate a random password")]
+    GenPass(GenPassOpts),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -43,6 +46,24 @@ pub struct CsvOpts {
     pub header: bool,
 }
 
+#[derive(Debug, Parser)]
+pub struct GenPassOpts {
+    #[arg(short, long, default_value_t = 16)]
+    pub length: u8,
+
+    #[arg(long, default_value_t = true)]
+    pub uppercase: bool,
+
+    #[arg(long, default_value_t = true)]
+    pub lowercase: bool,
+
+    #[arg(long, default_value_t = true)]
+    pub number: bool,
+
+    #[arg(long, default_value_t = true)]
+    pub symbol: bool,
+}
+
 fn parse_format(format: &str) -> Result<OutputFormat, anyhow::Error> {
     format.parse()
 }
@@ -60,7 +81,7 @@ impl FromStr for OutputFormat {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
+        match s.to_lowercase().as_str() {
             "json" => Ok(OutputFormat::Json),
             "yaml" => Ok(OutputFormat::Yaml),
             _ => Err(anyhow::anyhow!("Invalid format")),
@@ -70,7 +91,7 @@ impl FromStr for OutputFormat {
 
 impl fmt::Display for OutputFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", Into::<&'static str>::into(*self))
+        write!(f, "{}", Into::<&str>::into(*self))
     }
 }
 

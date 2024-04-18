@@ -1,5 +1,5 @@
 // rcli csv -i input.csv -o output.json --header -d ','
-use rcli::process_csv;
+use rcli::{process_csv, process_genpass};
 use rcli::{Opts, SubCommand};
 
 use clap::Parser;
@@ -14,6 +14,15 @@ fn main() -> anyhow::Result<()> {
                 format!("output.{}", opts.format)
             };
             process_csv(&opts.input, output, opts.format)?;
+        }
+        SubCommand::GenPass(opts) => {
+            process_genpass(
+                opts.length,
+                opts.uppercase,
+                opts.lowercase,
+                opts.number,
+                opts.symbol,
+            )?;
         }
     }
 
