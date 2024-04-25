@@ -4,15 +4,18 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 // rcli csv -i input.csv -o output.json --header -d ','
 use rcli::{
     get_content, get_reader, process_csv, process_decode, process_encode, process_genpass,
-    process_text_decrypt, process_text_encrypt, process_text_key_generate, process_text_sign,
-    process_text_verify,
+    process_http_serve, process_text_decrypt, process_text_encrypt, process_text_key_generate,
+    process_text_sign, process_text_verify, HttpSubCommand,
 };
 use rcli::{Base64SubCommand, Opts, SubCommand, TextSubCommand};
 
 use clap::Parser;
 use zxcvbn::zxcvbn;
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    tracing_subscriber::fmt::init();
+
     let opts: Opts = Opts::parse();
     match opts.cmd {
         SubCommand::Csv(opts) => {
@@ -91,7 +94,12 @@ fn main() -> anyhow::Result<()> {
 
                 let key = get_content(&opts.key)?;
                 let plaintext = process_text_decrypt(&encrypt_text[..], &key, opts.format)?;
-                println!("decrypt res: {}", String::from_utf8(plaintext)?);
+                println!("\ndecrypt res: {}", String::from_utf8(plaintext)?);
+            }
+        },
+        SubCommand::Http(cmd) => match cmd {
+            HttpSubCommand::Serve(opts) => {
+                process_http_serve(opts.dir, opts.port).await?;
             }
         },
     }

@@ -1,0 +1,2 @@
+### Test index page（需要 vscode 安装 rest client 插件）
+GET http://localhost:8080/fixtures/chacha20.txt
