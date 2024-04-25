@@ -4,7 +4,8 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 // rcli csv -i input.csv -o output.json --header -d ','
 use rcli::{
     get_content, get_reader, process_csv, process_decode, process_encode, process_genpass,
-    process_text_key_generate, process_text_sign, process_text_verify,
+    process_text_decrypt, process_text_encrypt, process_text_key_generate, process_text_sign,
+    process_text_verify,
 };
 use rcli::{Base64SubCommand, Opts, SubCommand, TextSubCommand};
 
@@ -60,6 +61,7 @@ fn main() -> anyhow::Result<()> {
                 let mut reader = get_reader(&opts.input)?;
                 let key = get_content(&opts.key)?;
                 let decoded = URL_SAFE_NO_PAD.decode(&opts.sig)?;
+                println!("decode len: {}", decoded.len());
                 let verified = process_text_verify(&mut reader, &key, &decoded, opts.format)?;
                 if verified {
                     println!("✓ Signature verified");
@@ -72,6 +74,24 @@ fn main() -> anyhow::Result<()> {
                 for (k, v) in key {
                     fs::write(opts.output_path.join(k), v)?;
                 }
+            }
+            TextSubCommand::Encrypt(opts) => {
+                let mut reader = get_reader(&opts.input)?;
+                let key = get_content(&opts.key)?;
+                let sig = process_text_encrypt(&mut reader, &key, opts.format)?;
+                let encoded = URL_SAFE_NO_PAD.encode(sig);
+                println!("{}", encoded);
+            }
+            TextSubCommand::Decrypt(opts) => {
+                let mut reader = get_reader(&opts.input)?;
+                let mut buf = Vec::new();
+                reader.read_to_end(&mut buf)?;
+                let b64_encrypt_text = String::from_utf8(buf)?;
+                let encrypt_text = URL_SAFE_NO_PAD.decode(b64_encrypt_text)?;
+
+                let key = get_content(&opts.key)?;
+                let plaintext = process_text_decrypt(&encrypt_text[..], &key, opts.format)?;
+                println!("decrypt res: {}", String::from_utf8(plaintext)?);
             }
         },
     }

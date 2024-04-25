@@ -14,10 +14,28 @@ pub enum TextSubCommand {
 
     #[command(about = "Generate a random blake3 key or ed25519 key pair")]
     Generate(KeyGenerateOpts),
+
+    #[command(about = "Encrypt a message with a key")]
+    Encrypt(TextEncryptOpts),
+
+    #[command(about = "Decrypt a message with a key")]
+    Decrypt(TextEncryptOpts),
 }
 
 #[derive(Debug, Parser)]
 pub struct TextSignOpts {
+    #[arg(short, long, value_parser = verify_file, default_value = "-")]
+    pub input: String,
+
+    #[arg(short, long, value_parser = verify_file)]
+    pub key: String,
+
+    #[arg(long, value_parser = parse_text_sign_format, default_value = "blake3")]
+    pub format: TextSignFormat,
+}
+
+#[derive(Debug, Parser)]
+pub struct TextEncryptOpts {
     #[arg(short, long, value_parser = verify_file, default_value = "-")]
     pub input: String,
 
@@ -56,6 +74,7 @@ pub struct KeyGenerateOpts {
 pub enum TextSignFormat {
     Blake3,
     Ed25519,
+    ChaCha20,
 }
 
 fn parse_text_sign_format(format: &str) -> Result<TextSignFormat, anyhow::Error> {
@@ -69,6 +88,7 @@ impl FromStr for TextSignFormat {
         match s.to_lowercase().as_str() {
             "blake3" => Ok(TextSignFormat::Blake3),
             "ed25519" => Ok(TextSignFormat::Ed25519),
+            "chacha20" => Ok(TextSignFormat::ChaCha20),
             _ => Err(anyhow::anyhow!("Invalid format")),
         }
     }
@@ -79,6 +99,7 @@ impl From<TextSignFormat> for &'static str {
         match value {
             TextSignFormat::Blake3 => "blake3",
             TextSignFormat::Ed25519 => "ed25519",
+            TextSignFormat::ChaCha20 => "chacha20",
         }
     }
 }

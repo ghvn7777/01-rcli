@@ -53,3 +53,26 @@ cargo run text sign -k fixtures/ed25519_sk.txt --format ed25519
 # cargo run text verify -k fixtures/ed25519_pk.txt --format ed25519 --sig Zbii_ujaR6KClq5wXF_yg3fHgi-5Dr0_CLtEzz_Sso9sgNG23385xd3xcB1s-LF5QJ7IbHt7OKZuEHe1Pt6JCw
 # 再次输入 hello 然后 Ctrl+D 可以看到验证成功
 ```
+
+## text encrypt and decrypt
+生成密钥
+```
+cargo run -- text generate --output-path fixtures/ --format chacha20
+```
+
+会生成 `fixtures/chacha20.txt` 文件
+
+## 文本加密
+```
+cargo run -- text encrypt --key fixtures/chacha20.txt --format chacha20
+```
+然后输入要加密的文本，ctrl + D 结束输入，也可以用 `-i` 参数指定要加密的文件
+
+这里我们会得到一段 base64 编码的文本，可以复制下来或者存到文件中，一会解密用
+
+## 文本解密
+```
+cargo run -- text decrypt --key fixtures/chacha20.txt --format chacha20
+```
+
+然后输入上面的 base64 编码文本，就可以看到解密的结果了。也可以使用 `-i` 参数指定要解密的文件

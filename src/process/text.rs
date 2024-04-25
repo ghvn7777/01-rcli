@@ -4,6 +4,11 @@ use anyhow::Result;
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
 
+use chacha20poly1305::{
+    aead::{Aead, KeyInit},
+    ChaCha20Poly1305, Nonce,
+};
+
 use crate::{process_genpass, TextSignFormat};
 
 pub trait TextSign {
@@ -16,12 +21,27 @@ pub trait TextVerifier {
     fn verify(&self, reader: &mut dyn Read, sig: &[u8]) -> Result<bool>;
 }
 
+pub trait TextEncrypt {
+    /// Encrypt the data from the reader and return the ciphertext
+    fn encrypt(&self, reader: &mut dyn Read) -> Result<Vec<u8>>;
+}
+
+pub trait TextDecrypt {
+    /// Decrypt the data from the reader and return the plaintext
+    fn decrypt(&self, buf: &[u8]) -> Result<Vec<u8>>;
+}
+
 struct Blake3 {
     key: [u8; 32],
 }
 
 struct Ed25519Signer {
     key: SigningKey,
+}
+
+struct EncryptChaCha20 {
+    key: [u8; 32],
+    nonce: [u8; 12],
 }
 
 struct Ed25519Verifier {
@@ -79,6 +99,55 @@ impl TextVerifier for Ed25519Verifier {
     }
 }
 
+impl TextEncrypt for EncryptChaCha20 {
+    fn encrypt(&self, reader: &mut dyn Read) -> Result<Vec<u8>> {
+        let cipher = ChaCha20Poly1305::new_from_slice(&self.key)
+            .map_err(|_| anyhow::anyhow!("Failed to create ChaChaPoly1305 instance"))?;
+        let nonce = Nonce::from_slice(&self.nonce);
+
+        let mut buf = Vec::new();
+        reader.read_to_end(&mut buf)?;
+
+        let ciphertext = cipher
+            .encrypt(nonce, &buf[..])
+            .map_err(|_| anyhow::anyhow!("Failed to encrypt data"))?;
+        Ok(ciphertext)
+    }
+}
+
+impl TextDecrypt for EncryptChaCha20 {
+    fn decrypt(&self, buf: &[u8]) -> Result<Vec<u8>> {
+        let cipher = ChaCha20Poly1305::new_from_slice(&self.key)
+            .map_err(|_| anyhow::anyhow!("Failed to create ChaChaPoly1305 instance"))?;
+        let nonce = Nonce::from_slice(&self.nonce);
+
+        let plaintext = cipher
+            .decrypt(nonce, buf)
+            .map_err(|_| anyhow::anyhow!("Failed to decrypt data"))?;
+        Ok(plaintext)
+    }
+}
+
+impl EncryptChaCha20 {
+    pub fn new(key: [u8; 32], nonce: [u8; 12]) -> Self {
+        Self { key, nonce }
+    }
+
+    pub fn try_new(key_and_nonce: impl AsRef<[u8]>) -> Result<Self> {
+        let key_and_nonce = key_and_nonce.as_ref();
+        let key = (&key_and_nonce[..32]).try_into()?;
+        let nonce = (&key_and_nonce[32..32 + 12]).try_into()?;
+        Ok(Self::new(key, nonce))
+    }
+
+    fn generate() -> Result<HashMap<&'static str, Vec<u8>>> {
+        let key = process_genpass(48, true, true, true, true)?;
+        let mut map = HashMap::new();
+        map.insert("chacha20.txt", key.as_bytes().to_vec());
+        Ok(map)
+    }
+}
+
 impl Blake3 {
     pub fn new(key: [u8; 32]) -> Self {
         Self { key }
@@ -132,6 +201,28 @@ impl Ed25519Verifier {
     }
 }
 
+pub fn process_text_encrypt(
+    reader: &mut dyn Read,
+    key: &[u8],
+    format: TextSignFormat,
+) -> Result<Vec<u8>> {
+    let encrypt: Box<dyn TextEncrypt> = match format {
+        TextSignFormat::ChaCha20 => Box::new(EncryptChaCha20::try_new(key)?),
+        _ => anyhow::bail!("Unsupported format"),
+    };
+
+    encrypt.encrypt(reader)
+}
+
+pub fn process_text_decrypt(reader: &[u8], key: &[u8], format: TextSignFormat) -> Result<Vec<u8>> {
+    let decrypt: Box<dyn TextDecrypt> = match format {
+        TextSignFormat::ChaCha20 => Box::new(EncryptChaCha20::try_new(key)?),
+        _ => anyhow::bail!("Unsupported format"),
+    };
+
+    decrypt.decrypt(reader)
+}
+
 pub fn process_text_sign(
     reader: &mut dyn Read,
     key: &[u8],
@@ -140,6 +231,7 @@ pub fn process_text_sign(
     let signer: Box<dyn TextSign> = match format {
         TextSignFormat::Blake3 => Box::new(Blake3::try_new(key)?),
         TextSignFormat::Ed25519 => Box::new(Ed25519Signer::try_new(key)?),
+        _ => anyhow::bail!("Unsupported format"),
     };
 
     signer.sign(reader)
@@ -154,6 +246,7 @@ pub fn process_text_verify(
     let verifier: Box<dyn TextVerifier> = match format {
         TextSignFormat::Blake3 => Box::new(Blake3::try_new(key)?),
         TextSignFormat::Ed25519 => Box::new(Ed25519Verifier::try_new(key)?),
+        _ => anyhow::bail!("Unsupported format"),
     };
 
     verifier.verify(reader, sig)
@@ -163,6 +256,7 @@ pub fn process_text_key_generate(format: TextSignFormat) -> Result<HashMap<&'sta
     match format {
         TextSignFormat::Blake3 => Blake3::generate(),
         TextSignFormat::Ed25519 => Ed25519Signer::generate(),
+        TextSignFormat::ChaCha20 => EncryptChaCha20::generate(),
     }
 }
 
