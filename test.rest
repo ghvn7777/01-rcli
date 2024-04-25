@@ -1,2 +1,6 @@
 ### Test index page（需要 vscode 安装 rest client 插件）
 GET http://localhost:8080/fixtures/chacha20.txt
+
+### Test static file with tower-http
+
+GET http://localhost:8080/tower/fixtures/ed25519_pk.txt
