@@ -2,6 +2,7 @@ use std::{fmt, path::PathBuf, str::FromStr};
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use clap::Parser;
+use enum_dispatch::enum_dispatch;
 use tokio::fs;
 
 use crate::{
@@ -12,6 +13,7 @@ use crate::{
 use super::{verify_file, verify_path};
 
 #[derive(Debug, Parser)]
+#[enum_dispatch(CmdExector)]
 pub enum TextSubCommand {
     #[command(about = "Sign a message with a private/session key")]
     Sign(TextSignOpts),
@@ -190,17 +192,5 @@ impl CmdExector for TextDecryptOpts {
         println!("\ndecrypt res: {}", String::from_utf8(plaintext)?);
 
         Ok(())
-    }
-}
-
-impl CmdExector for TextSubCommand {
-    async fn execute(self) -> anyhow::Result<()> {
-        match self {
-            TextSubCommand::Sign(opts) => opts.execute().await,
-            TextSubCommand::Verify(opts) => opts.execute().await,
-            TextSubCommand::Generate(opts) => opts.execute().await,
-            TextSubCommand::Encrypt(opts) => opts.execute().await,
-            TextSubCommand::Decrypt(opts) => opts.execute().await,
-        }
     }
 }
