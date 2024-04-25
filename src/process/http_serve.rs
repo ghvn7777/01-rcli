@@ -23,6 +23,7 @@ pub async fn process_http_serve(path: PathBuf, port: u16) -> Result<()> {
 
     let router = Router::new()
         .nest_service("/tower", ServeDir::new(path))
+        .route("/", get(index_handler))
         .route("/*path", get(file_handler))
         .with_state(Arc::new(state));
 
@@ -78,6 +79,10 @@ async fn file_handler(
             }
         }
     }
+}
+
+async fn index_handler(State(state): State<Arc<HttpServeState>>) -> Response {
+    file_handler(State(state), Path("".into())).await
 }
 
 #[cfg(test)]
