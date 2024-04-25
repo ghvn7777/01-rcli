@@ -1,6 +1,13 @@
 use std::{fmt, path::PathBuf, str::FromStr};
 
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use clap::Parser;
+use tokio::fs;
+
+use crate::{
+    get_content, get_reader, process_text_decrypt, process_text_encrypt, process_text_key_generate,
+    process_text_sign, process_text_verify, CmdExector,
+};
 
 use super::{verify_file, verify_path};
 
@@ -19,7 +26,7 @@ pub enum TextSubCommand {
     Encrypt(TextEncryptOpts),
 
     #[command(about = "Decrypt a message with a key")]
-    Decrypt(TextEncryptOpts),
+    Decrypt(TextDecryptOpts),
 }
 
 #[derive(Debug, Parser)]
@@ -36,6 +43,18 @@ pub struct TextSignOpts {
 
 #[derive(Debug, Parser)]
 pub struct TextEncryptOpts {
+    #[arg(short, long, value_parser = verify_file, default_value = "-")]
+    pub input: String,
+
+    #[arg(short, long, value_parser = verify_file)]
+    pub key: String,
+
+    #[arg(long, value_parser = parse_text_sign_format, default_value = "blake3")]
+    pub format: TextSignFormat,
+}
+
+#[derive(Debug, Parser)]
+pub struct TextDecryptOpts {
     #[arg(short, long, value_parser = verify_file, default_value = "-")]
     pub input: String,
 
@@ -107,5 +126,81 @@ impl From<TextSignFormat> for &'static str {
 impl fmt::Display for TextSignFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", Into::<&str>::into(*self))
+    }
+}
+
+impl CmdExector for TextSignOpts {
+    async fn execute(self) -> anyhow::Result<()> {
+        let mut reader = get_reader(&self.input)?;
+        let key = get_content(&self.key)?;
+        let sig = process_text_sign(&mut reader, &key, self.format)?;
+        let encoded = URL_SAFE_NO_PAD.encode(sig);
+        println!("{}", encoded);
+        Ok(())
+    }
+}
+
+impl CmdExector for TextVerifyOpts {
+    async fn execute(self) -> anyhow::Result<()> {
+        let mut reader = get_reader(&self.input)?;
+        let key = get_content(&self.key)?;
+        let decoded = URL_SAFE_NO_PAD.decode(&self.sig)?;
+        println!("decode len: {}", decoded.len());
+        let verified = process_text_verify(&mut reader, &key, &decoded, self.format)?;
+        if verified {
+            println!("✓ Signature verified");
+        } else {
+            println!("⚠ Signature not verified");
+        }
+        Ok(())
+    }
+}
+
+impl CmdExector for KeyGenerateOpts {
+    async fn execute(self) -> anyhow::Result<()> {
+        let key = process_text_key_generate(self.format)?;
+        for (k, v) in key {
+            fs::write(self.output_path.join(k), v).await?;
+        }
+        Ok(())
+    }
+}
+
+impl CmdExector for TextEncryptOpts {
+    async fn execute(self) -> anyhow::Result<()> {
+        let mut reader = get_reader(&self.input)?;
+        let key = get_content(&self.key)?;
+        let sig = process_text_encrypt(&mut reader, &key, self.format)?;
+        let encoded = URL_SAFE_NO_PAD.encode(sig);
+        println!("{}", encoded);
+        Ok(())
+    }
+}
+
+impl CmdExector for TextDecryptOpts {
+    async fn execute(self) -> anyhow::Result<()> {
+        let mut reader = get_reader(&self.input)?;
+        let mut buf = Vec::new();
+        reader.read_to_end(&mut buf)?;
+        let b64_encrypt_text = String::from_utf8(buf)?;
+        let encrypt_text = URL_SAFE_NO_PAD.decode(b64_encrypt_text)?;
+
+        let key = get_content(&self.key)?;
+        let plaintext = process_text_decrypt(&encrypt_text[..], &key, self.format)?;
+        println!("\ndecrypt res: {}", String::from_utf8(plaintext)?);
+
+        Ok(())
+    }
+}
+
+impl CmdExector for TextSubCommand {
+    async fn execute(self) -> anyhow::Result<()> {
+        match self {
+            TextSubCommand::Sign(opts) => opts.execute().await,
+            TextSubCommand::Verify(opts) => opts.execute().await,
+            TextSubCommand::Generate(opts) => opts.execute().await,
+            TextSubCommand::Encrypt(opts) => opts.execute().await,
+            TextSubCommand::Decrypt(opts) => opts.execute().await,
+        }
     }
 }

@@ -76,3 +76,8 @@ cargo run -- text decrypt --key fixtures/chacha20.txt --format chacha20
 ```
 
 然后输入上面的 base64 编码文本，就可以看到解密的结果了。也可以使用 `-i` 参数指定要解密的文件
+
+## 静态服务器
+```
+RUST_LOG=info cargo run -- http serve
+```
