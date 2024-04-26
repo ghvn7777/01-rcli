@@ -51,8 +51,11 @@ pub struct TextEncryptOpts {
     #[arg(short, long, value_parser = verify_file)]
     pub key: String,
 
-    #[arg(long, value_parser = parse_text_sign_format, default_value = "blake3")]
+    #[arg(long, value_parser = parse_text_sign_format, default_value = "chacha20")]
     pub format: TextSignFormat,
+
+    #[arg(short, long, default_value = "-")]
+    pub output: String,
 }
 
 #[derive(Debug, Parser)]
@@ -63,8 +66,11 @@ pub struct TextDecryptOpts {
     #[arg(short, long, value_parser = verify_file)]
     pub key: String,
 
-    #[arg(long, value_parser = parse_text_sign_format, default_value = "blake3")]
+    #[arg(long, value_parser = parse_text_sign_format, default_value = "chacha20")]
     pub format: TextSignFormat,
+
+    #[arg(short, long, default_value = "-")]
+    pub output: String,
 }
 
 #[derive(Debug, Parser)]
@@ -172,9 +178,15 @@ impl CmdExector for TextEncryptOpts {
     async fn execute(self) -> anyhow::Result<()> {
         let mut reader = get_reader(&self.input)?;
         let key = get_content(&self.key)?;
-        let sig = process_text_encrypt(&mut reader, &key, self.format)?;
-        let encoded = URL_SAFE_NO_PAD.encode(sig);
-        println!("{}", encoded);
+        let encrypt_text = process_text_encrypt(&mut reader, &key, self.format)?;
+        let encoded = URL_SAFE_NO_PAD.encode(encrypt_text);
+        if self.output == "-" {
+            println!("{}", encoded);
+        } else {
+            fs::write(&self.output, encoded).await?;
+            println!("result has been written to: {}", self.output);
+        }
+
         Ok(())
     }
 }
@@ -189,7 +201,13 @@ impl CmdExector for TextDecryptOpts {
 
         let key = get_content(&self.key)?;
         let plaintext = process_text_decrypt(&encrypt_text[..], &key, self.format)?;
-        println!("\ndecrypt res: {}", String::from_utf8(plaintext)?);
+
+        if self.output == "-" {
+            println!("\n{}", String::from_utf8(plaintext)?);
+        } else {
+            fs::write(&self.output, plaintext).await?;
+            println!("result has been written to: {}", self.output);
+        }
 
         Ok(())
     }

@@ -68,7 +68,9 @@ cargo run -- text encrypt --key fixtures/chacha20.txt --format chacha20
 ```
 然后输入要加密的文本，ctrl + D 结束输入，也可以用 `-i` 参数指定要加密的文件
 
-这里我们会得到一段 base64 编码的文本，可以复制下来或者存到文件中，一会解密用
+这里我们会得到一段 base64 编码的文本，可以复制下来，一会解密用
+
+如果想直接把 base64 编码文本保存到文件中，可以用 --output 选项
 
 ## 文本解密
 ```
