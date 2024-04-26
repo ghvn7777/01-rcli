@@ -153,6 +153,9 @@ impl Blake3 {
         Self { key }
     }
 
+    // AsRef 和 From 有点像
+    // From<T> for U: 意思是对于 T 类型来说，我们可以把它转化成 U 类型，也就是 T -> U
+    // AsRef<T> for U：意思是对于 U 类型来说，我们可以把它转化成 &T 类型，U 一般也是一个引用（不强制），也就是 U(ref) -> &T
     pub fn try_new(key: impl AsRef<[u8]>) -> Result<Self> {
         let key = key.as_ref();
         // convert &[u8] to [u8; 32]
