@@ -75,7 +75,7 @@ cargo run text sign -k fixtures/ed25519_sk.txt --format ed25519
 
 使用公钥进行验证
 ```
-# cargo run text verify -k fixtures/ed25519_pk.txt --format ed25519 --sig Zbii_ujaR6KClq5wXF_yg3fHgi-5Dr0_CLtEzz_Sso9sgNG23385xd3xcB1s-LF5QJ7IbHt7OKZuEHe1Pt6JCw
+cargo run text verify -k fixtures/ed25519_pk.txt --format ed25519 --sig Zbii_ujaR6KClq5wXF_yg3fHgi-5Dr0_CLtEzz_Sso9sgNG23385xd3xcB1s-LF5QJ7IbHt7OKZuEHe1Pt6JCw
 # 再次输入 hello 然后 Ctrl+D 可以看到验证成功
 ```
 
