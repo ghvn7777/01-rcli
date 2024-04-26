@@ -10,6 +10,7 @@ license = "MIT"
 anyhow = "1.0.81"
 axum = { version = "0.7.5", features = ["http2", "query", "tracing"] }
 base64 = "0.22.0"
+base64-url = "2.0.2"
 blake3 = "1.5.1"
 chacha20poly1305 = "0.10.1"
 clap = { version = "4.5.4", features = ["derive"] }

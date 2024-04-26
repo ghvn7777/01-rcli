@@ -2,6 +2,7 @@ mod base64;
 mod csv;
 mod genpass;
 mod http;
+mod jwt;
 mod text;
 
 use std::path::{Path, PathBuf};
@@ -9,7 +10,7 @@ use std::path::{Path, PathBuf};
 use clap::Parser;
 use enum_dispatch::enum_dispatch;
 
-pub use self::{base64::*, csv::*, genpass::*, http::*, text::*};
+pub use self::{base64::*, csv::*, genpass::*, http::*, jwt::*, text::*};
 
 #[derive(Debug, Parser)]
 #[clap(name = "rcli", version, about, long_about = None)]
@@ -39,6 +40,32 @@ pub enum SubCommand {
 
     #[command(subcommand, about = "HTTP server")]
     Http(HttpSubCommand),
+
+    #[command(subcommand, about = "JWT sign/verify")]
+    Jwt(JwtSubCommand),
+}
+
+fn parse_duration(duration_str: &str) -> Result<std::time::Duration, &'static str> {
+    let str_len = duration_str.len();
+    if str_len < 2 {
+        return Err("Invalid duration");
+    }
+    let duration_unit = &duration_str[str_len - 1..];
+    let duration = &duration_str[..str_len - 1];
+
+    let mul_unit = match duration_unit {
+        "s" => 1,
+        "m" => 60,
+        "h" => 60 * 60,
+        "d" => 60 * 60 * 24,
+        "w" => 60 * 60 * 24 * 7,
+        "M" => 60 * 60 * 24 * 30,
+        "y" => 60 * 60 * 24 * 365,
+        _ => return Err("Invalid duration unit"),
+    };
+
+    let duration = duration.parse::<u64>().map_err(|_| "Invalid duration")?;
+    Ok(std::time::Duration::from_secs(duration * mul_unit))
 }
 
 fn verify_file(filename: &str) -> Result<String, &'static str> {

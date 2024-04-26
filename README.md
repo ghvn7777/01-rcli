@@ -83,3 +83,10 @@ cargo run -- text decrypt --key fixtures/chacha20.txt --format chacha20
 ```
 RUST_LOG=info cargo run -- http serve
 ```
+
+## jwt 签名验证
+生成 jwt secret
+```
+cargo run jwt generate --output-path fixtures/
+```
+会生成 `fixtures/jwt.txt` 文件
