@@ -4,8 +4,6 @@ use anyhow::{Ok, Result};
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
-use tracing::info;
-
 use crate::process_genpass;
 
 /// Our claims struct, it needs to derive `Serialize` and/or `Deserialize`
@@ -42,14 +40,14 @@ pub fn process_jwt_verify(reader: &mut dyn Read, token: String) -> Result<bool> 
     reader.read_to_end(&mut buf)?;
 
     let algorithm: Vec<&str> = token.split('.').collect();
-    info!("algorithm: {:?}", algorithm);
+    // info!("algorithm: {:?}", algorithm);
     if algorithm.len() != 3 {
         return Err(anyhow::anyhow!("Invalid token"));
     }
 
     let json_header = String::from_utf8(base64_url::decode(&algorithm[0])?)?;
     let header = serde_json::from_str::<Header>(&json_header)?;
-    info!("header: {:?}", header);
+    // info!("header: {:?}", header);
 
     // 基本所有字段都不验证，只验证签名
     let mut validation = Validation::new(header.alg);
@@ -59,8 +57,8 @@ pub fn process_jwt_verify(reader: &mut dyn Read, token: String) -> Result<bool> 
     validation.sub = None;
     validation.iss = None;
 
-    let token = decode::<Claims>(&token, &DecodingKey::from_secret(&buf), &validation)?;
-    info!("{:?}", token);
+    let _token = decode::<Claims>(&token, &DecodingKey::from_secret(&buf), &validation)?;
+    // info!("{:?}", _token);
 
     Ok(true)
 }
